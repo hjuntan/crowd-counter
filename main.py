@@ -2,7 +2,12 @@ import cv2
 from transformers import DetrFeatureExtractor, DetrForObjectDetection
 from PIL import Image
 import torch
-import os
+import sys
+
+# Set the confidence threshold for person detection
+confidence_threshold = 0.7
+
+is_time_lapse = False
 
 # Step 1: Load Hugging Face DETR for object detection
 feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
@@ -15,12 +20,14 @@ def detect_people_in_frame(image):
     with torch.no_grad():
         outputs = model(**inputs)
     
-    # Extract bounding boxes and class labels
-    target_boxes = outputs.logits.argmax(-1)
+    # Extract bounding boxes, class labels and confidence scores
+    logits = outputs.logits
+    pred_boxes = outputs.pred_boxes
+    pred_scores = logits.softmax(-1)[..., :-1].max(-1).values  # Exclude the background class
     
     # Person class id in COCO dataset is 1
     person_class_id = 1
-    boxes = outputs.pred_boxes[target_boxes == person_class_id]
+    boxes = pred_boxes[(logits.argmax(-1) == person_class_id) & (pred_scores > confidence_threshold)]
     
     # Convert boxes into (x, y, w, h) format expected by OpenCV
     boxes = boxes.tolist()  # convert to list of bounding boxes
@@ -41,7 +48,7 @@ def track_people_in_video(video_path, frame_interval=30):
 
         if frame_count % frame_interval == 0:  # Process every Nth frame
             # Convert frame to PIL Image for detection
-            frame_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            frame_pil = Image.fromarray(frame)
             people_boxes = detect_people_in_frame(frame_pil)
 
             print(f"Frame {frame_count/frame_interval}: {len(people_boxes)} people detected")
@@ -57,4 +64,25 @@ def track_people_in_video(video_path, frame_interval=30):
     print(f"Total people detected in the entire video: {total_people_count}")
 
 # Usage
-track_people_in_video('mall_surveillance.mp4', frame_interval=30)
+try:
+    video_path = sys.argv[1]
+except IndexError:
+    print("Usage: python main.py <your-video-file-path> <confidence-threshold>")
+    sys.exit(1)
+
+try:
+    input = sys.argv[2]
+    confidence_threshold = float(input)
+    if confidence_threshold < 0 or confidence_threshold > 1:
+        raise ValueError
+except IndexError:
+    print("No confidence threshold provided, default to 0.7")
+    confidence_threshold = 0.7
+except ValueError:
+    print("Sorry, that's not a valid score, default to confidence threshold of 0.7")
+    confidence_threshold = 0.7
+
+if is_time_lapse:
+    track_people_in_video(video_path, frame_interval=1)
+else:
+    track_people_in_video(video_path, frame_interval=30)
