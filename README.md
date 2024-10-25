@@ -41,9 +41,9 @@ First, I used DETR model for object detection, where it recognizes various class
 
 One challange I faced is when some bounding boxes that do not contain a person have a really low confidence score for "person", i.e. 0.2. but are still counted into the overall number of people.
 
-I used a confidence score of 0.5 to ensure objects are not accidentally counted into the total, while being lenient for the model, allowing it to make slight mistakes. The confidence score can be adjusted by entering the `confidence-threshold` in the bash command.
+I used a confidence score of 0.5 to ensure objects are not accidentally counted into the total, while being lenient to the model, allowing it to make slight mistakes. The confidence score can be adjusted by entering the `confidence-threshold` in the bash command if you wish to test a lower or higher score threshold.
 
-One of the main issue with this approach is that the assumption that each frame has different people inside them. The distinction between a normal surveillance videos and a time-lapse are even crucial; where time-lapse are essentially taking snapshots of a normal video at intervals and piecing them together.
+One of the main issue with this approach is that the assumption that each frame has different people inside them. The distinction between a normal surveillance videos and a time-lapse are even crucial here; where time-lapse are essentially taking snapshots of a normal video at intervals and piecing them together.
 
 With normal videos, we can process video frames at intervals (e.g., every 30th frame) to reduce computational load, since each frame have a very slight change between each other. However, with time-lapse videos, we need to process and track each frame instead. You can adjust which type of video by changing the boolean variable: `is_time_lapse`.
 
